@@ -338,6 +338,7 @@
                     <img src="Screenshot_from_2025-12-10_01-39-31-removebg-preview.png" 
                          alt="SM Tickets Logo" 
                          class="sm-logo-img"
+                         crossorigin="anonymous"
                          onerror="this.style.display='none'; this.parentNode.innerText='SM TICKETS'; this.parentNode.style.color='white'; this.parentNode.style.fontWeight='bold';">
                 </div>
 
@@ -437,7 +438,10 @@
                         </div>
 
                         <div class="right-qr-col">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TICKET-VALID" alt="QR" class="qr-img">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TICKET-VALID" 
+                                 alt="QR" 
+                                 class="qr-img" 
+                                 crossorigin="anonymous">
                         </div>
                     </div>
                 </div>
@@ -496,11 +500,11 @@
                 return;
             }
 
+            // Fixed Configuration: Removed allowTaint, added standard CORS handling
             html2canvas(ticket, {
-                scale: 3, // Very high resolution
+                scale: 3, 
                 useCORS: true,
-                backgroundColor: null,
-                allowTaint: true
+                backgroundColor: null
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'SM-Ticket-' + Date.now() + '.png';
@@ -508,7 +512,7 @@
                 link.click();
             }).catch(err => {
                 console.error("Image generation failed:", err);
-                alert("Could not generate image. Please try 'Download as PDF' or 'Print'.");
+                alert("Error: Security restriction blocked the download. Please use the 'Download as PDF' button instead.");
             });
         }
 
