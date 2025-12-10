@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SM Ticket Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Oswald:wght@500;600;700&family=Permanent+Marker&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- APP LAYOUT --- */
+        body {
+            background-color: #1f2937; /* Dark background for the app */
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .editor-panel {
+            width: 350px;
+            background-color: #ffffff;
+            height: 100%;
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+
+        .preview-panel {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #d1d5db; /* Original bg color */
+            overflow: auto;
+            padding: 20px;
+        }
+
+        /* --- INPUT STYLES --- */
+        .input-group { margin-bottom: 15px; }
+        .input-label { 
+            display: block; 
+            font-size: 12px; 
+            font-weight: 700; 
+            color: #4b5563; 
+            margin-bottom: 5px; 
+            text-transform: uppercase;
+        }
+        .input-field {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .input-field:focus { outline: 2px solid #004e64; border-color: transparent; }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #004e64;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 5px;
+        }
+
+        /* --- TICKET CSS (Original + Tweaks) --- */
+        .ticket-paper {
+            width: 680px;
+            height: 400px; /* Fixed height to keep aspect ratio */
+            flex-shrink: 0; /* Prevent shrinking on small screens */
+            background-color: #fcfcfc;
+            display: flex;
+            position: relative;
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15);
+            background-image: linear-gradient(135deg, #ffffff 0%, #f4f4f4 100%);
+            transform-origin: center;
+        }
+
+        .stub {
+            width: 230px;
+            height: 100%;
+            border-right: 1.5px dashed #a0a0a0; 
+            position: relative;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-section {
+            flex: 1;
+            height: 100%;
+            position: relative;
+            padding: 15px 25px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sm-header-box {
+            background-color: rgba(0, 78, 100, 1);
+            width: 100%;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            padding: 4px 4px;
+            box-sizing: border-box;
+            overflow: hidden;
+            margin-bottom: 2px;
+        }
+
+        .sm-logo-img { height: 42px; width: auto; display: block; }
+
+        .sm-fine-print-container {
+            text-align: center;
+            color: #000;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 4px;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        
+        .fine-print-company { font-size: 11px; font-weight: 700; letter-spacing: 0.2px; line-height: 1.1; text-transform: uppercase; }
+        .fine-print-details { font-size: 7px; font-weight: 500; line-height: 1.25; text-transform: uppercase; color: #111; }
+
+        .stub-data-container {
+            font-family: 'Oswald', 'Arial Narrow', sans-serif;
+            color: #000;
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .data-label { font-family: 'Arial', sans-serif; font-size: 9px; color: #333; text-transform: uppercase; font-weight: 500; margin-bottom: 0px; line-height: 1.1; letter-spacing: 0.2px; }
+        .data-value { font-size: 13px; font-weight: 600; text-transform: uppercase; line-height: 1; }
+        .data-value-large { font-size: 18px; font-weight: 700; text-transform: uppercase; line-height: 0.95; letter-spacing: -0.5px; }
+
+        .flex-row-data { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 7px; }
+        .text-right { text-align: right; }
+
+        .timestamp-section { font-family: 'Arial', sans-serif; font-size: 7px; color: #444; text-align: center; margin-top: 8px; margin-bottom: 3px; line-height: 1.2; letter-spacing: 0.1px; }
+
+        .price-breakdown { margin-top: auto; font-family: 'Arial Narrow', sans-serif; font-size: 8px; color: #000; padding-top: 4px; }
+        .breakdown-row { display: flex; justify-content: space-between; line-height: 1.2; }
+
+        .art-section { height: 220px; width: 100%; position: relative; display: flex; align-items: center; justify-content: flex-end; }
+        
+        .handwritten-text { font-family: 'Oswald', 'Arial Narrow', sans-serif; text-align: center; color: #111; width: 100%; padding-right: 5px; }
+        .hw-title { font-size: 50px; line-height: 1.1; margin-bottom: 20px; letter-spacing: -2px; text-transform: uppercase;}
+        .hw-details { font-size: 20px; line-height: 1.1; text-transform: uppercase; margin-bottom: 20px; }
+
+        .right-data-section { flex: 1; display: flex; padding-left: 3px; }
+        .right-data-col { flex: 1; font-family: 'Oswald', 'Arial Narrow', sans-serif; }
+        .right-qr-col { width: 140px; display: flex; flex-direction: column; align-items: flex-end; }
+        .qr-img { width: 90px; height: 90px; mix-blend-mode: multiply; }
+
+    </style>
+</head>
+<body>
+
+    <div class="editor-panel">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Ticket Editor</h2>
+        
+        <div class="section-title">General Info</div>
+        <div class="input-group">
+            <label class="input-label">Artist / Event Name</label>
+            <input type="text" id="in-artist" class="input-field" value="IV OF SPADES" oninput="updateTicket()">
+        </div>
+        <div class="input-group">
+            <label class="input-label">Date & Time (Line 1)</label>
+            <input type="text" id="in-date" class="input-field" value="DECEMBER 13, 2025" oninput="updateTicket()">
+        </div>
+        <div class="input-group">
+            <label class="input-label">Date & Time (Line 2)</label>
+            <input type="text" id="in-time" class="input-field" value="SATURDAY | 8PM" oninput="updateTicket()">
+        </div>
+        <div class="input-group">
+            <label class="input-label">Venue</label>
+            <input type="text" id="in-venue" class="input-field" value="MALL OF ASIA ARENA" oninput="updateTicket()">
+        </div>
+
+        <div class="section-title">Seating & Section</div>
+        <div class="input-group">
+            <label class="input-label">Section Name</label>
+            <input type="text" id="in-section" class="input-field" value="VIP STANDING 207" oninput="updateTicket()">
+        </div>
+        <div class="input-group">
+            <label class="input-label">Row - Seat (Main Ticket)</label>
+            <input type="text" id="in-seat-main" class="input-field" value="B - 14" oninput="updateTicket()">
+        </div>
+        <div class="input-group">
+            <label class="input-label">Row - Seat (Stub/Left)</label>
+            <input type="text" id="in-seat-stub" class="input-field" value="STANDING 00062" oninput="updateTicket()">
+        </div>
+
+        <div class="section-title">Pricing & Codes</div>
+        <div class="input-group">
+            <label class="input-label">Price (Php)</label>
+            <input type="text" id="in-price" class="input-field" value="6,500" oninput="updateTicket()">
+        </div>
+        <div class="input-group">
+            <label class="input-label">Event Code (Stub)</label>
+            <input type="text" id="in-event-code" class="input-field" value="IVOSLIVE13DEC208PM" oninput="updateTicket()">
+        </div>
+        <div class="input-group">
+            <label class="input-label">Control Number</label>
+            <input type="text" id="in-ctrl" class="input-field" value="2699999" oninput="updateTicket()">
+        </div>
+        
+        <button onclick="window.print()" class="mt-4 w-full bg-gray-800 text-white p-3 rounded font-bold hover:bg-gray-700">PRINT / PDF</button>
+    </div>
+
+    <div class="preview-panel">
+        <div class="ticket-paper">
+            <div class="stub">
+            <div class="sm-header-box">
+                <img src="Screenshot_from_2025-12-10_01-39-31-removebg-preview.png" 
+                     alt="SM Tickets Logo" 
+                     class="sm-logo-img">
+            </div>
+
+                <div class="sm-fine-print-container">
+                    <div class="fine-print-company">SM PRIME HOLDINGS, INC.</div>
+                    <div class="fine-print-details">
+                        SM BLDG. 3/F DR. A SANTOS AVE. PARANAQUE CITY<br>
+                        VAT REG. TIN: 003-058-789-018<br>
+                        ACK RECEIPT NO. 0805897
+                    </div>
+                </div>
+
+                <div class="stub-data-container">
+                    <div class="mb-2 pl-1">
+                        <div class="data-label">EVENT</div>
+                        <div class="data-value-large" style="font-size: 14px;" id="out-event-code">IVOSLIVE13DEC208PM</div>
+                    </div>
+
+                    <div class="flex-row-data pl-1">
+                        <div>
+                            <div class="data-label">SECTION</div>
+                            <div class="data-value-large" id="out-section-stub">VIP STANDING 207</div>
+                        </div>
+                        <div class="text-right">
+                             <div class="data-value" style="font-size: 11px; font-weight: 700;">#27188590</div>
+                        </div>
+                    </div>
+
+                    <div class="flex-row-data pl-1">
+                        <div>
+                            <div class="data-label">ROW - SEAT</div>
+                            <div class="data-value-large" id="out-seat-stub">STANDING 00062</div>
+                        </div>
+                    </div>
+
+                    <div class="flex-row-data pl-1 mt-3">
+                        <div>
+                            <div class="data-label">PRICE RP/APAY</div>
+                            <div class="data-value-large">Php **<span id="out-price-stub">6,500</span>**</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="data-label">CONTROL NUMBER</div>
+                            <div class="data-value" style="font-size: 13px;" id="out-ctrl">2699999</div>
+                        </div>
+                    </div>
+
+                    <div class="timestamp-section">
+                        <span id="out-timestamp">12-09-2025 05:52:31PM</span><br>
+                        WEB / SMT-HO / SMSC250069648RESU
+                    </div>
+
+                    <div class="price-breakdown">
+                        <div class="breakdown-row">
+                            <span>BASIC</span>
+                            <span id="out-base-price">6,500.00</span>
+                        </div>
+                        <div class="breakdown-row">
+                            <span>0% AMUSEMENT TAX</span>
+                            <span>0.00</span>
+                        </div>
+                        <div class="breakdown-row" style="font-weight: 700;">
+                            <span>TICKET PRICE</span>
+                            <span id="out-total-price">6,500.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="main-section">
+                <div class="art-section">
+                    <div class="handwritten-text">
+                        <div class="hw-title" id="out-artist">IV OF SPADES</div>
+                        <div class="hw-details">
+                            <span id="out-date">DECEMBER 13, 2025</span><br>
+                            <span id="out-time">SATURDAY | 8PM</span><br>
+                            <span id="out-venue">MALL OF ASIA ARENA</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="right-data-section">
+                    <div class="right-data-col">
+                        <div class="flex items-end mb-3">
+                            <div class="data-label w-16">ROW - SEAT</div>
+                            <div class="data-value-large flex gap-2" id="out-seat-main">B - 14</div>
+                        </div>
+                        
+                        <div class="flex items-end mb-3">
+                            <div class="data-label w-16">SECTION</div>
+                            <div class="data-value-large" id="out-section-main">VIP STANDING 207</div>
+                        </div>
+
+                        <div class="flex items-end">
+                            <div class="data-label w-24 leading-tight">TICKET PRICE<br>RP/APAY</div>
+                            <div class="data-value-large">Php **<span id="out-price-main">6,500</span>**</div>
+                        </div>
+                    </div>
+
+                    <div class="right-qr-col">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TICKET-VALID" alt="QR" class="qr-img">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateTicket() {
+            // Get Input Values
+            const artist = document.getElementById('in-artist').value;
+            const date = document.getElementById('in-date').value;
+            const time = document.getElementById('in-time').value;
+            const venue = document.getElementById('in-venue').value;
+            const section = document.getElementById('in-section').value;
+            const seatMain = document.getElementById('in-seat-main').value;
+            const seatStub = document.getElementById('in-seat-stub').value;
+            const price = document.getElementById('in-price').value;
+            const eventCode = document.getElementById('in-event-code').value;
+            const ctrlNum = document.getElementById('in-ctrl').value;
+
+            // Update Main Ticket (Right)
+            document.getElementById('out-artist').innerText = artist;
+            document.getElementById('out-date').innerText = date;
+            document.getElementById('out-time').innerText = time;
+            document.getElementById('out-venue').innerText = venue;
+            document.getElementById('out-section-main').innerText = section;
+            document.getElementById('out-seat-main').innerText = seatMain;
+            document.getElementById('out-price-main').innerText = price;
+
+            // Update Stub (Left)
+            document.getElementById('out-event-code').innerText = eventCode;
+            document.getElementById('out-section-stub').innerText = section;
+            document.getElementById('out-seat-stub').innerText = seatStub;
+            document.getElementById('out-price-stub').innerText = price;
+            document.getElementById('out-ctrl').innerText = ctrlNum;
+            
+            // Update Breakdown (Formatted)
+            document.getElementById('out-base-price').innerText = price + '.00';
+            document.getElementById('out-total-price').innerText = price + '.00';
+
+            // Auto Timestamp
+            const now = new Date();
+            const formattedDate = now.toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}).replace(/\//g, '-');
+            const formattedTime = now.toLocaleTimeString('en-US');
+            document.getElementById('out-timestamp').innerText = `${formattedDate} ${formattedTime}`;
+        }
+    </script>
+</body>
+</html>
