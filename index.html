@@ -2,19 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1f2937">
+    <meta name="apple-mobile-web-app-title" content="SM Tickets">
+
     <title>SM Ticket Generator</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Oswald:wght@500;600;700&family=Permanent+Marker&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
         /* --- APP LAYOUT --- */
         body {
-            background-color: #1f2937; /* Dark background for the app */
+            background-color: #1f2937;
             margin: 0;
             font-family: 'Roboto', sans-serif;
             height: 100vh;
             display: flex;
-            overflow: hidden;
+            overflow: hidden; /* Default desktop behavior */
         }
 
         .editor-panel {
@@ -25,6 +37,8 @@
             padding: 20px;
             box-shadow: 2px 0 10px rgba(0,0,0,0.3);
             z-index: 10;
+            flex-shrink: 0;
+            padding-bottom: 100px; /* Space for bottom buttons */
         }
 
         .preview-panel {
@@ -32,9 +46,10 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: #d1d5db; /* Original bg color */
+            background-color: #d1d5db;
             overflow: auto;
             padding: 20px;
+            position: relative;
         }
 
         /* --- INPUT STYLES --- */
@@ -66,17 +81,22 @@
             padding-bottom: 5px;
         }
 
-        /* --- TICKET CSS (Original + Tweaks) --- */
+        /* --- TICKET CSS --- */
+        /* Wrapper to handle scaling transformation smoothly */
+        #ticket-transform-wrapper {
+            transition: transform 0.2s ease;
+            transform-origin: center center;
+        }
+
         .ticket-paper {
             width: 680px;
-            height: 400px; /* Fixed height to keep aspect ratio */
-            flex-shrink: 0; /* Prevent shrinking on small screens */
+            height: 400px;
+            flex-shrink: 0;
             background-color: #fcfcfc;
             display: flex;
             position: relative;
             box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15);
             background-image: linear-gradient(135deg, #ffffff 0%, #f4f4f4 100%);
-            transform-origin: center;
         }
 
         .stub {
@@ -159,12 +179,92 @@
         .right-qr-col { width: 140px; display: flex; flex-direction: column; align-items: flex-end; }
         .qr-img { width: 90px; height: 90px; mix-blend-mode: multiply; }
 
+        /* Install Guide Modal */
+        #install-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 50;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            max-width: 350px;
+            text-align: center;
+        }
+
+        /* --- RESPONSIVE MEDIA QUERIES --- */
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column; /* Stack vertically */
+                height: auto;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            .editor-panel {
+                width: 100%;
+                height: auto;
+                order: 2; /* Put editor below preview */
+                border-top: 4px solid #004e64;
+                padding-bottom: 80px;
+            }
+
+            .preview-panel {
+                width: 100%;
+                height: auto;
+                min-height: 280px; 
+                order: 1;
+                padding: 10px 0;
+                overflow: hidden;
+            }
+
+            #ticket-transform-wrapper {
+                transform-origin: top center;
+            }
+        }
     </style>
 </head>
 <body>
 
+    <div id="install-modal" onclick="this.style.display='none'">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Add to Home Screen</h3>
+            <p class="text-sm text-gray-600 mb-4">Install this as an app for fullscreen access.</p>
+            
+            <div id="ios-guide" class="hidden text-left bg-gray-100 p-3 rounded mb-3">
+                <p class="text-sm font-bold mb-1">iOS (Safari):</p>
+                <ol class="list-decimal ml-4 text-xs space-y-1">
+                    <li>Tap the <strong>Share</strong> button (square with arrow).</li>
+                    <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+                    <li>Tap <strong>Add</strong>.</li>
+                </ol>
+            </div>
+
+            <div id="android-guide" class="hidden text-left bg-gray-100 p-3 rounded mb-3">
+                <p class="text-sm font-bold mb-1">Android (Chrome):</p>
+                <ol class="list-decimal ml-4 text-xs space-y-1">
+                    <li>Tap the <strong>Menu</strong> (three dots).</li>
+                    <li>Tap <strong>Add to Home Screen</strong> or <strong>Install App</strong>.</li>
+                </ol>
+            </div>
+
+            <button onclick="document.getElementById('install-modal').style.display='none'" class="mt-2 text-blue-600 font-bold text-sm">Close</button>
+        </div>
+    </div>
+
     <div class="editor-panel">
-        <h2 class="text-xl font-bold mb-4 text-gray-800">Ticket Editor</h2>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-800">Ticket Editor</h2>
+            <button onclick="showInstallGuide()" class="md:hidden text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200 font-bold">
+                + Install App
+            </button>
+        </div>
         
         <div class="section-title">General Info</div>
         <div class="input-group">
@@ -212,115 +312,133 @@
             <input type="text" id="in-ctrl" class="input-field" value="2699999" oninput="updateTicket()">
         </div>
         
-        <button onclick="window.print()" class="mt-4 w-full bg-gray-800 text-white p-3 rounded font-bold hover:bg-gray-700">PRINT / PDF</button>
+        <div class="flex gap-2 mt-6 flex-col">
+            <button onclick="downloadImage()" class="w-full bg-blue-600 text-white p-3 rounded font-bold hover:bg-blue-700 flex justify-center items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                DOWNLOAD AS IMAGE
+            </button>
+            
+            <button onclick="downloadPDF()" class="w-full bg-red-600 text-white p-3 rounded font-bold hover:bg-red-700 flex justify-center items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                DOWNLOAD AS PDF
+            </button>
+
+            <button onclick="window.print()" class="w-full bg-gray-800 text-white p-3 rounded font-bold hover:bg-gray-700 flex justify-center items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                PRINT
+            </button>
+        </div>
     </div>
 
     <div class="preview-panel">
-        <div class="ticket-paper">
-            <div class="stub">
-            <div class="sm-header-box">
-                <img src="Screenshot_from_2025-12-10_01-39-31-removebg-preview.png" 
-                     alt="SM Tickets Logo" 
-                     class="sm-logo-img">
-            </div>
-
-                <div class="sm-fine-print-container">
-                    <div class="fine-print-company">SM PRIME HOLDINGS, INC.</div>
-                    <div class="fine-print-details">
-                        SM BLDG. 3/F DR. A SANTOS AVE. PARANAQUE CITY<br>
-                        VAT REG. TIN: 003-058-789-018<br>
-                        ACK RECEIPT NO. 0805897
-                    </div>
+        <div id="ticket-transform-wrapper">
+            <div class="ticket-paper">
+                <div class="stub">
+                <div class="sm-header-box">
+                    <img src="Screenshot_from_2025-12-10_01-39-31-removebg-preview.png" 
+                         alt="SM Tickets Logo" 
+                         class="sm-logo-img"
+                         onerror="this.style.display='none'; this.parentNode.innerText='SM TICKETS'; this.parentNode.style.color='white'; this.parentNode.style.fontWeight='bold';">
                 </div>
 
-                <div class="stub-data-container">
-                    <div class="mb-2 pl-1">
-                        <div class="data-label">EVENT</div>
-                        <div class="data-value-large" style="font-size: 14px;" id="out-event-code">IVOSLIVE13DEC208PM</div>
-                    </div>
-
-                    <div class="flex-row-data pl-1">
-                        <div>
-                            <div class="data-label">SECTION</div>
-                            <div class="data-value-large" id="out-section-stub">VIP STANDING 207</div>
-                        </div>
-                        <div class="text-right">
-                             <div class="data-value" style="font-size: 11px; font-weight: 700;">#27188590</div>
+                    <div class="sm-fine-print-container">
+                        <div class="fine-print-company">SM PRIME HOLDINGS, INC.</div>
+                        <div class="fine-print-details">
+                            SM BLDG. 3/F DR. A SANTOS AVE. PARANAQUE CITY<br>
+                            VAT REG. TIN: 003-058-789-018<br>
+                            ACK RECEIPT NO. 0805897
                         </div>
                     </div>
 
-                    <div class="flex-row-data pl-1">
-                        <div>
-                            <div class="data-label">ROW - SEAT</div>
-                            <div class="data-value-large" id="out-seat-stub">STANDING 00062</div>
+                    <div class="stub-data-container">
+                        <div class="mb-2 pl-1">
+                            <div class="data-label">EVENT</div>
+                            <div class="data-value-large" style="font-size: 14px;" id="out-event-code">IVOSLIVE13DEC208PM</div>
                         </div>
-                    </div>
 
-                    <div class="flex-row-data pl-1 mt-3">
-                        <div>
-                            <div class="data-label">PRICE RP/APAY</div>
-                            <div class="data-value-large">Php **<span id="out-price-stub">6,500</span>**</div>
+                        <div class="flex-row-data pl-1">
+                            <div>
+                                <div class="data-label">SECTION</div>
+                                <div class="data-value-large" id="out-section-stub">VIP STANDING 207</div>
+                            </div>
+                            <div class="text-right">
+                                 <div class="data-value" style="font-size: 11px; font-weight: 700;">#27188590</div>
+                            </div>
                         </div>
-                        <div class="text-right">
-                            <div class="data-label">CONTROL NUMBER</div>
-                            <div class="data-value" style="font-size: 13px;" id="out-ctrl">2699999</div>
-                        </div>
-                    </div>
 
-                    <div class="timestamp-section">
-                        <span id="out-timestamp">12-09-2025 05:52:31PM</span><br>
-                        WEB / SMT-HO / SMSC250069648RESU
-                    </div>
+                        <div class="flex-row-data pl-1">
+                            <div>
+                                <div class="data-label">ROW - SEAT</div>
+                                <div class="data-value-large" id="out-seat-stub">STANDING 00062</div>
+                            </div>
+                        </div>
 
-                    <div class="price-breakdown">
-                        <div class="breakdown-row">
-                            <span>BASIC</span>
-                            <span id="out-base-price">6,500.00</span>
+                        <div class="flex-row-data pl-1 mt-3">
+                            <div>
+                                <div class="data-label">PRICE RP/APAY</div>
+                                <div class="data-value-large">Php **<span id="out-price-stub">6,500</span>**</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="data-label">CONTROL NUMBER</div>
+                                <div class="data-value" style="font-size: 13px;" id="out-ctrl">2699999</div>
+                            </div>
                         </div>
-                        <div class="breakdown-row">
-                            <span>0% AMUSEMENT TAX</span>
-                            <span>0.00</span>
-                        </div>
-                        <div class="breakdown-row" style="font-weight: 700;">
-                            <span>TICKET PRICE</span>
-                            <span id="out-total-price">6,500.00</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="main-section">
-                <div class="art-section">
-                    <div class="handwritten-text">
-                        <div class="hw-title" id="out-artist">IV OF SPADES</div>
-                        <div class="hw-details">
-                            <span id="out-date">DECEMBER 13, 2025</span><br>
-                            <span id="out-time">SATURDAY | 8PM</span><br>
-                            <span id="out-venue">MALL OF ASIA ARENA</span>
+                        <div class="timestamp-section">
+                            <span id="out-timestamp">12-09-2025 05:52:31PM</span><br>
+                            WEB / SMT-HO / SMSC250069648RESU
+                        </div>
+
+                        <div class="price-breakdown">
+                            <div class="breakdown-row">
+                                <span>BASIC</span>
+                                <span id="out-base-price">6,500.00</span>
+                            </div>
+                            <div class="breakdown-row">
+                                <span>0% AMUSEMENT TAX</span>
+                                <span>0.00</span>
+                            </div>
+                            <div class="breakdown-row" style="font-weight: 700;">
+                                <span>TICKET PRICE</span>
+                                <span id="out-total-price">6,500.00</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="right-data-section">
-                    <div class="right-data-col">
-                        <div class="flex items-end mb-3">
-                            <div class="data-label w-16">ROW - SEAT</div>
-                            <div class="data-value-large flex gap-2" id="out-seat-main">B - 14</div>
-                        </div>
-                        
-                        <div class="flex items-end mb-3">
-                            <div class="data-label w-16">SECTION</div>
-                            <div class="data-value-large" id="out-section-main">VIP STANDING 207</div>
-                        </div>
-
-                        <div class="flex items-end">
-                            <div class="data-label w-24 leading-tight">TICKET PRICE<br>RP/APAY</div>
-                            <div class="data-value-large">Php **<span id="out-price-main">6,500</span>**</div>
+                <div class="main-section">
+                    <div class="art-section">
+                        <div class="handwritten-text">
+                            <div class="hw-title" id="out-artist">IV OF SPADES</div>
+                            <div class="hw-details">
+                                <span id="out-date">DECEMBER 13, 2025</span><br>
+                                <span id="out-time">SATURDAY | 8PM</span><br>
+                                <span id="out-venue">MALL OF ASIA ARENA</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="right-qr-col">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TICKET-VALID" alt="QR" class="qr-img">
+                    <div class="right-data-section">
+                        <div class="right-data-col">
+                            <div class="flex items-end mb-3">
+                                <div class="data-label w-16">ROW - SEAT</div>
+                                <div class="data-value-large flex gap-2" id="out-seat-main">B - 14</div>
+                            </div>
+                            
+                            <div class="flex items-end mb-3">
+                                <div class="data-label w-16">SECTION</div>
+                                <div class="data-value-large" id="out-section-main">VIP STANDING 207</div>
+                            </div>
+
+                            <div class="flex items-end">
+                                <div class="data-label w-24 leading-tight">TICKET PRICE<br>RP/APAY</div>
+                                <div class="data-value-large">Php **<span id="out-price-main">6,500</span>**</div>
+                            </div>
+                        </div>
+
+                        <div class="right-qr-col">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TICKET-VALID" alt="QR" class="qr-img">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -367,6 +485,99 @@
             const formattedTime = now.toLocaleTimeString('en-US');
             document.getElementById('out-timestamp').innerText = `${formattedDate} ${formattedTime}`;
         }
+
+        // --- IMAGE DOWNLOAD FUNCTION ---
+        function downloadImage() {
+            const ticket = document.querySelector('.ticket-paper');
+            
+            // Validate if element exists
+            if(!ticket) {
+                alert('Ticket element not found!');
+                return;
+            }
+
+            html2canvas(ticket, {
+                scale: 3, // Very high resolution
+                useCORS: true,
+                backgroundColor: null,
+                allowTaint: true
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'SM-Ticket-' + Date.now() + '.png';
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+            }).catch(err => {
+                console.error("Image generation failed:", err);
+                alert("Could not generate image. Please try 'Download as PDF' or 'Print'.");
+            });
+        }
+
+        // --- PDF DOWNLOAD FUNCTION ---
+        function downloadPDF() {
+            const element = document.querySelector('.ticket-paper');
+            
+            // Config for Ticket Size PDF
+            const opt = {
+                margin: 0,
+                filename: 'SM-Ticket-' + Date.now() + '.pdf',
+                image: { type: 'jpeg', quality: 1 },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'px', format: [680, 400], orientation: 'landscape' }
+            };
+
+            // Generate
+            html2pdf().set(opt).from(element).save().catch(err => {
+                console.error("PDF generation failed:", err);
+                alert("Could not generate PDF. Please try the 'Print' button.");
+            });
+        }
+
+        // --- INSTALL GUIDE LOGIC ---
+        function showInstallGuide() {
+            const modal = document.getElementById('install-modal');
+            const ua = navigator.userAgent.toLowerCase();
+            const isIOS = /iphone|ipad|ipod/.test(ua);
+            
+            modal.style.display = 'flex';
+            
+            if (isIOS) {
+                document.getElementById('ios-guide').classList.remove('hidden');
+                document.getElementById('android-guide').classList.add('hidden');
+            } else {
+                document.getElementById('android-guide').classList.remove('hidden');
+                document.getElementById('ios-guide').classList.add('hidden');
+            }
+        }
+
+        // --- RESPONSIVE SCALING FUNCTION ---
+        function scaleTicket() {
+            const wrapper = document.getElementById('ticket-transform-wrapper');
+            const ticketWidth = 680; // The fixed CSS width of the ticket
+            const screenWidth = window.innerWidth;
+            const margin = 20; // Safety margin
+
+            // If screen is smaller than ticket + margin
+            if (screenWidth < (ticketWidth + margin)) {
+                const scale = (screenWidth - margin) / ticketWidth;
+                wrapper.style.transform = `scale(${scale})`;
+                
+                // Adjust height of container
+                const newHeight = 400 * scale;
+                document.querySelector('.preview-panel').style.height = `${newHeight + 40}px`; 
+                document.querySelector('.preview-panel').style.minHeight = `${newHeight + 40}px`;
+            } else {
+                // Reset for desktop
+                wrapper.style.transform = 'scale(1)';
+                document.querySelector('.preview-panel').style.height = 'auto';
+                document.querySelector('.preview-panel').style.minHeight = 'auto';
+            }
+        }
+
+        // Initialize Scaling
+        window.addEventListener('resize', scaleTicket);
+        window.addEventListener('load', scaleTicket);
+        scaleTicket();
+
     </script>
 </body>
 </html>
